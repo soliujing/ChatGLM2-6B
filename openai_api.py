@@ -8,7 +8,8 @@ import time
 import torch
 import uvicorn
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -85,6 +86,41 @@ class ChatCompletionResponse(BaseModel):
     object: Literal["chat.completion", "chat.completion.chunk"]
     choices: List[Union[ChatCompletionResponseChoice, ChatCompletionResponseStreamChoice]]
     created: Optional[int] = Field(default_factory=lambda: int(time.time()))
+    
+class EmbeddingsRequest(BaseModel):
+    input: str | List[str] 
+    model: Optional[str]
+    
+
+
+def do_embeddings(body: EmbeddingsRequest, request: Request):
+    global emb_model
+    embeddings = emb_model.encode(body.input)
+    data = []
+    if isinstance(body.input, str):
+        data.append({
+            "object": "embedding",
+            "index": 0,
+            "embedding": embeddings.tolist(),
+        })
+    else:
+        for i, embed in enumerate(embeddings):
+            data.append({
+                "object": "embedding",
+                "index": i,
+                "embedding": embed.tolist(),
+            })
+    content = {
+        "object": "list",
+        "data": data,
+        "model": "text-embedding-ada-002-v2",
+        "usage": {
+            "prompt_tokens": 0,
+            "total_tokens": 0
+        }
+    }
+    return JSONResponse(status_code=200, content=content)
+
 
 
 @app.get("/v1/models", response_model=ModelList)
@@ -92,6 +128,11 @@ async def list_models():
     global model_args
     model_card = ModelCard(id="gpt-3.5-turbo")
     return ModelList(data=[model_card])
+
+
+@app.post("/v1/embeddings")
+async def embeddings(body: EmbeddingsRequest, request: Request):
+    return do_embeddings(body, request)
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
@@ -173,5 +214,8 @@ if __name__ == "__main__":
     # from utils import load_model_on_gpus
     # model = load_model_on_gpus("THUDM/chatglm2-6b", num_gpus=2)
     model.eval()
+    
+    from sentence_transformers import SentenceTransformer
+    emb_model = SentenceTransformer('BAAI/bge-large-zh')
 
     uvicorn.run(app, host='0.0.0.0', port=8000, workers=1)
