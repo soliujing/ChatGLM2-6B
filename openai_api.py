@@ -180,20 +180,36 @@ async def predict(query: str, history: List[List[str]], model_id: str):
 
     current_length = 0
 
-    for new_response, _ in model.stream_chat(tokenizer, query, history):
-        if len(new_response) == current_length:
-            continue
+    try:
+        for new_response, _ in model.stream_chat(tokenizer, query, history):
+            if len(new_response) == current_length:
+                continue
 
-        new_text = new_response[current_length:]
-        current_length = len(new_response)
+            new_text = new_response[current_length:]
+            current_length = len(new_response)
 
-        choice_data = ChatCompletionResponseStreamChoice(
-            index=0,
-            delta=DeltaMessage(content=new_text),
-            finish_reason=None
-        )
-        chunk = ChatCompletionResponse(model=model_id, choices=[choice_data], object="chat.completion.chunk")
-        yield "{}".format(chunk.model_dump_json(exclude_unset=True))
+            choice_data = ChatCompletionResponseStreamChoice(
+                index=0,
+                delta=DeltaMessage(content=new_text),
+                finish_reason=None
+            )
+            chunk = ChatCompletionResponse(model=model_id, choices=[choice_data], object="chat.completion.chunk")
+            yield "{}".format(chunk.model_dump_json(exclude_unset=True))
+    except:
+        for new_response in model.chat_stream(tokenizer, query, history):
+            if len(new_response) == current_length:
+                continue
+
+            new_text = new_response[current_length:]
+            current_length = len(new_response)
+
+            choice_data = ChatCompletionResponseStreamChoice(
+                index=0,
+                delta=DeltaMessage(content=new_text),
+                finish_reason=None
+            )
+            chunk = ChatCompletionResponse(model=model_id, choices=[choice_data], object="chat.completion.chunk")
+            yield "{}".format(chunk.model_dump_json(exclude_unset=True))
 
 
     choice_data = ChatCompletionResponseStreamChoice(
@@ -208,11 +224,24 @@ async def predict(query: str, history: List[List[str]], model_id: str):
 
 
 if __name__ == "__main__":
-    tokenizer = AutoTokenizer.from_pretrained("THUDM/chatglm2-6b", trust_remote_code=True)
-    model = AutoModel.from_pretrained("THUDM/chatglm2-6b", device_map="auto", trust_remote_code=True)
-    # 多显卡支持，使用下面两行代替上面一行，将num_gpus改为你实际的显卡数量
-    # from utils import load_model_on_gpus
-    # model = load_model_on_gpus("THUDM/chatglm2-6b", num_gpus=2)
+    MODEL_NAME = "THUDM/chatglm2-6b"
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+    model = AutoModel.from_pretrained(MODEL_NAME, device_map="auto", trust_remote_code=True)
+
+    
+    # MODEL_NAME = "Qwen/Qwen-7B-Chat"
+    # from transformers import AutoModelForCausalLM, AutoTokenizer
+    # from transformers.generation import GenerationConfig
+
+    # # Note: The default behavior now has injection attack prevention off.
+    # tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+    # # use auto mode, automatically select precision based on the device.
+    # model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, device_map="auto", trust_remote_code=True).eval()
+    # # Specify hyperparameters for generation
+    # model.generation_config = GenerationConfig.from_pretrained(MODEL_NAME, trust_remote_code=True) # 可指定不同的生成长度、top_p等相关超参
+
+    
+    
     model.eval()
     
     from sentence_transformers import SentenceTransformer
