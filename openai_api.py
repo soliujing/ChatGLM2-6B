@@ -13,7 +13,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Literal, Optional, Union
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
+from transformers.generation import GenerationConfig
+# from modelscope import AutoModelForCausalLM, AutoModel, AutoTokenizer
+# from modelscope import GenerationConfig
 from sse_starlette.sse import ServerSentEvent, EventSourceResponse
 
 
@@ -225,6 +228,10 @@ async def predict(query: str, history: List[List[str]], model_id: str):
 
 if __name__ == "__main__":
     MODEL_NAME = "THUDM/chatglm2-6b"
+    # MODEL_NAME = "ZhipuAI/chatglm2-6b"
+    # from modelscope.hub.snapshot_download import snapshot_download
+    # model_dir = snapshot_download(MODEL_NAME, revision="v1.0.6")
+    
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
     model = AutoModel.from_pretrained(MODEL_NAME, device_map="auto", trust_remote_code=True)
 

@@ -13,7 +13,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Literal, Optional, Union
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
+from transformers.generation import GenerationConfig
+# from modelscope import AutoModelForCausalLM, AutoModel, AutoTokenizer
+# from modelscope import GenerationConfig
 from sse_starlette.sse import ServerSentEvent, EventSourceResponse
 
 
@@ -230,8 +233,8 @@ if __name__ == "__main__":
 
     
     MODEL_NAME = "Qwen/Qwen-7B-Chat"
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from transformers.generation import GenerationConfig
+    # from modelscope.hub.snapshot_download import snapshot_download
+    # model_dir = snapshot_download(MODEL_NAME)
 
     # Note: The default behavior now has injection attack prevention off.
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
